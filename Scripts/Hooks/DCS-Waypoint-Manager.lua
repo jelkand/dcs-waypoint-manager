@@ -29,11 +29,7 @@ function waypointmgr_load()
   local wyptSetCount = 0
   local wyptSets = {}
 
-  local JSON = loadfile("Scripts\\JSON.lua")()
-  wyptmgr.JSON = JSON:new()
-  function wyptmgr.JSON:onDecodeError(message, text, location, etc)
-     wyptmgr.log('Failed to decode JSON' .. message .. text)
-  end
+  local JSON = assert(loadfile "Scripts\\JSON.lua")()
 
   local function loadSet(wyptSet)
     wyptmgr.log("loading file " .. wyptSet.path)
@@ -61,10 +57,8 @@ function waypointmgr_load()
   else
       local content = file:read("*all")
       file:close()
-
-      local decoded = wyptmgr.JSON:decode(content)
-      self.log('decoded: ' .. decoded .. err)
-      return content
+      local decoded = JSON:decode(content)
+      return decoded
   end
   end
 
@@ -182,25 +176,45 @@ end
     keyboardLocked = true
   end
 
+
+
+  
+  -- https://stackoverflow.com/questions/18313171/lua-rounding-numbers-and-then-truncate
+  local function round(exact, quantum)
+    local quant,frac = math.modf(exact/quantum)
+    return quantum * (quant + (frac > 0.5 and 1 or 0))
+  end
+
+  local function fromDDtoDDMMMM(decimalDegrees, axis)
+    local direction
+    local positiveDegrees = decimalDegrees > 0
+    if axis == 'x' then
+        direction =  positiveDegrees and 'E' or 'W'
+    else
+        direction =  positiveDegrees and 'N' or 'S'
+    end
+
+	local unsignedDegrees = math.abs(decimalDegrees)
+    local degrees = tonumber(string.format("%u", unsignedDegrees))
+    local minutes = round((unsignedDegrees - degrees) * 60, 0.01)
+    return direction .. string.format("%u", degrees) .. string.format("%u", minutes* 100)
+  end
+
+
   local function inputWaypoints()
     wyptmgr.log('Input waypoints clicked...' .. currentWyptSetPath)
 
     local currentWyptData = loadJSONtoLua(currentWyptSetPath)
 
-    wyptmgr.log('Current Wypt Data: ' .. currentWyptData)
-
-    local decodedCoords = JSON:decode(currentWyptData)
-    wyptmgr.log('JSON: ' .. decodedCoords)
-
-    for idx, coord in decodedCoords do
+    for idx, coord in ipairs(currentWyptData) do
       wyptmgr.log('At index ' .. idx .. 'found x: ' .. coord.x .. ' and y: ' .. coord.y)
+
+      local lat = fromDDtoDDMMMM(coord.y, 'y')
+      local long = fromDDtoDDMMMM(coord.x, 'x')
+      wyptmgr.log("Calculated " .. lat .. " " .. long)
     end
-
-    GetDevice(UFC_DEVICE):performClickableAction(111, 1)
   end
 
-  local function decimalDegreesToDegreesDecimalMinutes(decimalDegrees)
-  end
 
   function wyptmgr.createWindow()
     wyptmgr.log('Creating window...')
@@ -373,9 +387,10 @@ end
 
   DCS.setUserCallbacks(wyptmgr)
 
-  net.log("[Waypoint Manager] Loaded ...")
+  net.log("[Waypoint Manager] Loaded...")
 end
 
+net.log("[Waypoint Manager] Loading...")
 local status, err = pcall(waypointmgr_load)
 if not status then
   net.log("[Waypoint Manager] Load Error: " .. tostring(err))
