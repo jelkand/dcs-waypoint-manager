@@ -4,51 +4,149 @@ package.cpath = package.cpath..";.\\LuaSocket\\?.dll;"
 local socket = require("socket")
 local JSON = assert(loadfile "Scripts\\JSON.lua")()
 
-local keyCommandMap = {
-  ["N"] = 3020,
-  ["E"] = 3024,
-  ["S"] = 3026,
-  ["W"] = 3022,
-  ["1"] = 3019,
-  ["2"] = 3020,
-  ["3"] = 3021,
-  ["4"] = 3022,
-  ["5"] = 3023,
-  ["6"] = 3024,
-  ["7"] = 3025,
-  ["8"] = 3026,
-  ["9"] = 3027,
-  ["0"] = 3018,
-  ["ENT"] = 3029,
-  ["POSN"] = 3010,
-  ["WYPTUP"] = 3022,
-  ["WYPTDWN"] = 3023,
-  ["DATA"] = 3020,
-  ["UFC"] = 3015,
+local keyCommandMapping = {
+  ["N"] = {
+    device = 25,
+    command = 3020,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.5,
+  },
+  ["E"] = {
+    device = 25,
+    command = 3024,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.5,
+  },
+  ["S"] = {
+    device = 25,
+    command = 3026,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.5,
+  },
+  ["W"] = {
+    device = 25,
+    command = 3022,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.5,
+  },
+  ["1"] = {
+    device = 25,
+    command = 3019,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["2"] = {
+    device = 25,
+    command = 3020,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["3"] = {
+    device = 25,
+    command = 3021,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["4"] = {
+    device = 25,
+    command = 3022,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["5"] = {
+    device = 25,
+    command = 3023,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["6"] = {
+    device = 25,
+    command = 3024,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["7"] = {
+    device = 25,
+    command = 3025,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["8"] = {
+    device = 25,
+    command = 3026,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["9"] = {
+    device = 25,
+    command = 3027,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["0"] = {
+    device = 25,
+    command = 3018,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["ENT"] = {
+    device = 25,
+    command = 3029,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.5,
+  },
+  ["POSN"] = {
+    device = 25,
+    command = 3010,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["WYPTUP"] = {
+    device = 37,
+    command = 3022,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["WYPTDWN"] = {
+    device = 37,
+    command = 3023,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["DATA"] = {
+    device = 37,
+    command = 3020,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
+  ["UFC"] = {
+    device = 37,
+    command = 3015,
+    onvalue = 1,
+    offvalue = 0,
+    releasedelay = 0.2,
+  },
 }
 
-local keyDeviceMap = {
-  ["N"] = 25, -- UFC,
-  ["E"] = 25, -- UFC
-  ["S"] = 25, -- UFC
-  ["W"] = 25, -- UFC
-  ["1"] = 25, -- UFC
-  ["2"] = 25, -- UFC
-  ["3"] = 25, -- UFC
-  ["4"] = 25, -- UFC
-  ["5"] = 25, -- UFC
-  ["6"] = 25, -- UFC
-  ["7"] = 25, -- UFC
-  ["8"] = 25, -- UFC
-  ["9"] = 25, -- UFC
-  ["0"] = 25, -- UFC
-  ["ENT"] = 25, -- UFC
-  ["POSN"] = 25, -- UFC
-  ["WYPTUP"] = 37, -- AMPCD
-  ["WYPTDWN"] = 37, -- AMPCD
-  ["DATA"] = 37, -- AMPCD
-  ["UFC"] = 37, -- AMPCD
-}
 
 local startKeySeq = {"DATA", "UFC", "POSN"}
 local enterSeq = {"ENT"}
@@ -56,10 +154,11 @@ local nextWyptSeq = {"WYPTUP", "UFC", "POSN"}
 
 
 local inputSequence = startKeySeq
-local inputSequenceLength = 0
-local sequenceStatus = "WAITING" -- "READY"
+
+local keypressSequence = {}
+local keypressSequenceLength = 0
+local sequenceStatus = "WAITING" -- "READY" -- "DONE"
 local _tNextWyptMgr = 0
-local currentlyPressed
 
 
 
@@ -130,7 +229,7 @@ local function printTable(name, tbl)
 end
 
 local function buildWyptInputSeq(decodedWaypoints)
-  wyptmgrServer.log("Constructing sequence for " .. JSON:encode_pretty(decodedWaypoints))
+  -- wyptmgrServer.log("Constructing sequence for " .. JSON:encode_pretty(decodedWaypoints))
 
   local waypointCount = 0
   for _ in ipairs(decodedWaypoints) do waypointCount = waypointCount + 1 end
@@ -154,72 +253,55 @@ local function buildWyptInputSeq(decodedWaypoints)
     local coordSeq = concatTbls(latSeq, longSeq)
     inputSequence = concatTbls(inputSequence, coordSeq)
   end
-
-  -- printTable("Sequence", inputSequence)
-  local seqLength = 0
-  for _ in ipairs(inputSequence) do seqLength = seqLength + 1 end
-
-  inputSequenceLength = seqLength
-
-  sequenceStatus = "READY"
-
-  -- return inputSequence
+  return inputSequence
 end
 
-local function sleep(sec)
-  socket.select(nil, nil, sec)
+local function executeClickableAction(args)
+  wyptmgrServer.log("Pressing button " .. args.command .. " on device " .. args.device .. " with value " .. args.value)
+  GetDevice(args.device):performClickableAction(args.command, args.value)
 end
 
+local function inputNextKeypress()
+  local input = table.remove(keypressSequence, 1);
+  keypressSequenceLength = keypressSequenceLength - 1;
 
-
-local function pressButton(device, command)
-  wyptmgrServer.log("Pressing device " .. device .. " Command " .. command)
-  GetDevice(device):performClickableAction(command, 1)
-  wyptmgrServer.log("Saving previously pressed button")
-  currentlyPressed = { device, command }
-  wyptmgrServer.log("Saved previous as " .. currentlyPressed[1] .. ":" .. currentlyPressed[2])
-end
-
-local function legacyInputSequence()
-  local input = table.remove(inputSequence, 1);
-  inputSequenceLength = inputSequenceLength - 1;
   if input == nil then
     wyptmgrServer.log("Out of input, setting status to DONE...")
     sequenceStatus = "DONE"
     return nil
   end
 
-  wyptmgrServer.log("Looking up input: " .. input)
-  local device = keyDeviceMap[input]
-  wyptmgrServer.log("Got device: " .. device)
-  local command = keyCommandMap[input]
-  wyptmgrServer.log("Got command: " .. command)
-  pressButton(device, command)
+  executeClickableAction(input)
+  return input.delay
 end
 
 
-local function couroutineInputSequence(t)
-  -- local tNext = t
-  -- local input = table.remove(inputSequence, 1);
-  -- if input == nil then return nil end
-
+local function buildKeypressSequence() 
   for _, input in ipairs(inputSequence) do
-    wyptmgrServer.log("Looking up input: " .. input)
-    local device = keyDeviceMap[input]
-    wyptmgrServer.log("Got device: " .. device)
-    local command = keyCommandMap[input]
-    wyptmgrServer.log("Got command: " .. command)
-    pressButton(device, command)
-    coroutine.yield()
+    -- format: { device, command, value, delay}
+
+    local inputTable = keyCommandMapping[input]
+
+    local press = { device = inputTable.device, command = inputTable.command, value = inputTable.onvalue, delay = inputTable.releasedelay}
+    local release = { device = inputTable.device, command = inputTable.command, value = inputTable.offvalue, delay = 0.2}
+
+    table.insert(keypressSequence, press)
+    table.insert(keypressSequence, release)
+    keypressSequenceLength = keypressSequenceLength + 2
   end
+
+  sequenceStatus = "READY"
+
 end
 
 
 
 local function inputWaypoints(decodedWaypoints)
   wyptmgrServer.log("Building sequence...")
-  buildWyptInputSeq(decodedWaypoints)
-  wyptmgrServer.log("Sequence Status: " .. sequenceStatus .. " Length: " .. inputSequenceLength)
+  local inptSeq = buildWyptInputSeq(decodedWaypoints)
+  buildKeypressSequence(inptSeq) -- either convert to read global or move inputSequence out of global
+  printTable("CMD", keypressSequence)
+  wyptmgrServer.log("Sequence Status: " .. sequenceStatus .. " Length: " .. keypressSequenceLength)
   -- printTable("SEQ", inputSequence)
 end
 
@@ -278,20 +360,22 @@ local _prevLuaExportActivityNextEvent = LuaExportActivityNextEvent
 function LuaExportActivityNextEvent(tCurrent)
   wyptmgrServer.log("Current: " .. tCurrent .. " Next: " .. _tNextWyptMgr .. " Status: " .. sequenceStatus)
 
-  if sequenceStatus == "READY" and tCurrent >= _tNextWyptMgr then
+  if sequenceStatus == "READY" and _tNextWyptMgr - tCurrent < 0.01 then
     wyptmgrServer.log("Actioning sequence...")
 
-    if currentlyPressed ~= nil and currentlyPressed[1] ~= nil and currentlyPressed[2] ~= nil then
-      wyptmgrServer.log("Clearing press... " .. currentlyPressed[1] .. ":" .. currentlyPressed[2])
-      GetDevice(currentlyPressed[1]):performClickableAction(currentlyPressed[2])
-      wyptmgrServer.log("Cleared press... " .. currentlyPressed[1] .. ":" .. currentlyPressed[2])
-      currentlyPressed = nil
-      wyptmgrServer.log("Reset Currently Pressed value")
-    end
+
+
+    -- if currentlyPressed ~= nil and currentlyPressed[1] ~= nil and currentlyPressed[2] ~= nil then
+    --   wyptmgrServer.log("Clearing press... " .. currentlyPressed[1] .. ":" .. currentlyPressed[2])
+    --   GetDevice(currentlyPressed[1]):performClickableAction(currentlyPressed[2])
+    --   wyptmgrServer.log("Cleared press... " .. currentlyPressed[1] .. ":" .. currentlyPressed[2])
+    --   currentlyPressed = nil
+    --   wyptmgrServer.log("Reset Currently Pressed value")
+    -- end
     if sequenceStatus == "READY" then
       wyptmgrServer.log("Actioning input...")
-      legacyInputSequence()
-      _tNextWyptMgr = tCurrent + 0.4
+      local delay = inputNextKeypress()
+      _tNextWyptMgr = tCurrent + delay
     end
     if sequenceStatus == "DONE" then
       wyptmgrServer.log("Completed input.")
