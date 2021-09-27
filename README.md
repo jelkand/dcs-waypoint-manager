@@ -51,6 +51,19 @@ x represents longitude in decimal degrees. y represents latitude in decimal degr
 
 You can have multiple JSON files in this folder, you will be able to select between them in the jet.
 
+***Exporting from CombatFlite:***
+
+Export .json ![image](https://user-images.githubusercontent.com/11602317/134995931-61d379ab-1e7d-43da-9499-50f64dba7fca.png) and save the file somewhere accessible. You only need to export flights, not airfields, etc.
+
+Open up that file in your text editor of choice, and you will see a large file that looks like this:
+![image](https://user-images.githubusercontent.com/11602317/134996051-25fd50f5-c989-4f00-a623-e6d156217eeb.png)
+
+You want the array of x and y coordinates named "points", in the object with the name of your flight. In this case, my flight is `Enfield1`. Yours might be `RAM` or something else.
+
+Copy _just that array_ (The parts starting and ending with `[` and `]`, full of "x" and "y" values. Put that into the `WaypointManager` folder described above.
+
+
+
 ### In-Game
 
 1. When loaded into the Hornet, ensure you have your HSI up on your AMPCD. The script will start entering on the currently selected waypoint. If you need to offset, increment the waypoints.
