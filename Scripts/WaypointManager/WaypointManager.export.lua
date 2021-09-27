@@ -4,146 +4,150 @@ package.cpath = package.cpath..";.\\LuaSocket\\?.dll;"
 local socket = require("socket")
 local JSON = assert(loadfile "Scripts\\JSON.lua")()
 
+local shortdelay = 0.2
+local nodelay = 0.05
+local longdelay = 0.5
+
 local keyCommandMapping = {
   ["N"] = {
     device = 25,
     command = 3020,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.5,
+    releasedelay = longdelay,
   },
   ["E"] = {
     device = 25,
     command = 3024,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.5,
+    releasedelay = longdelay,
   },
   ["S"] = {
     device = 25,
     command = 3026,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.5,
+    releasedelay = longdelay,
   },
   ["W"] = {
     device = 25,
     command = 3022,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.5,
+    releasedelay = longdelay,
   },
   ["1"] = {
     device = 25,
     command = 3019,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["2"] = {
     device = 25,
     command = 3020,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["3"] = {
     device = 25,
     command = 3021,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["4"] = {
     device = 25,
     command = 3022,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["5"] = {
     device = 25,
     command = 3023,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["6"] = {
     device = 25,
     command = 3024,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["7"] = {
     device = 25,
     command = 3025,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["8"] = {
     device = 25,
     command = 3026,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["9"] = {
     device = 25,
     command = 3027,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["0"] = {
     device = 25,
     command = 3018,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["ENT"] = {
     device = 25,
     command = 3029,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.5,
+    releasedelay = longdelay,
   },
   ["POSN"] = {
     device = 25,
     command = 3010,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["WYPTUP"] = {
     device = 37,
     command = 3022,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["WYPTDWN"] = {
     device = 37,
     command = 3023,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["DATA"] = {
     device = 37,
     command = 3020,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
   ["UFC"] = {
     device = 37,
     command = 3015,
     onvalue = 1,
     offvalue = 0,
-    releasedelay = 0.2,
+    releasedelay = shortdelay,
   },
 }
 
@@ -160,6 +164,12 @@ local keypressSequenceLength = 0
 local sequenceStatus = "WAITING" -- "READY" -- "DONE"
 local _tNextWyptMgr = 0
 
+local function resetState()
+  inputSequence = startKeySeq
+  keypressSequence = {}
+  keypressSequenceLength = 0
+  sequenceStatus = "WAITING"
+end
 
 
 wyptmgrServer = {
@@ -268,6 +278,7 @@ local function inputNextKeypress()
   if input == nil then
     wyptmgrServer.log("Out of input, setting status to DONE...")
     sequenceStatus = "DONE"
+    
     return nil
   end
 
@@ -283,7 +294,7 @@ local function buildKeypressSequence()
     local inputTable = keyCommandMapping[input]
 
     local press = { device = inputTable.device, command = inputTable.command, value = inputTable.onvalue, delay = inputTable.releasedelay}
-    local release = { device = inputTable.device, command = inputTable.command, value = inputTable.offvalue, delay = 0.2}
+    local release = { device = inputTable.device, command = inputTable.command, value = inputTable.offvalue, delay = nodelay}
 
     table.insert(keypressSequence, press)
     table.insert(keypressSequence, release)
@@ -291,18 +302,14 @@ local function buildKeypressSequence()
   end
 
   sequenceStatus = "READY"
-
 end
-
-
 
 local function inputWaypoints(decodedWaypoints)
   wyptmgrServer.log("Building sequence...")
   local inptSeq = buildWyptInputSeq(decodedWaypoints)
-  buildKeypressSequence(inptSeq) -- either convert to read global or move inputSequence out of global
+  buildKeypressSequence()
   printTable("CMD", keypressSequence)
   wyptmgrServer.log("Sequence Status: " .. sequenceStatus .. " Length: " .. keypressSequenceLength)
-  -- printTable("SEQ", inputSequence)
 end
 
 wyptmgrServer.insert = {
@@ -321,7 +328,7 @@ wyptmgrServer.insert = {
       wyptmgrServer.log("Current Status: " .. sequenceStatus)
       local decoded = JSON:decode(newdata)
       if sequenceStatus=="READY" then
-        wyptmgrServer.log("Waypoints already loaded, ignoring...")
+        wyptmgrServer.log("Waypoints already loaded, ignoring new data...")
       else
         inputWaypoints(decoded)
       end
@@ -358,20 +365,9 @@ local _prevLuaExportActivityNextEvent = LuaExportActivityNextEvent
 
 
 function LuaExportActivityNextEvent(tCurrent)
-  wyptmgrServer.log("Current: " .. tCurrent .. " Next: " .. _tNextWyptMgr .. " Status: " .. sequenceStatus)
 
   if sequenceStatus == "READY" and _tNextWyptMgr - tCurrent < 0.01 then
     wyptmgrServer.log("Actioning sequence...")
-
-
-
-    -- if currentlyPressed ~= nil and currentlyPressed[1] ~= nil and currentlyPressed[2] ~= nil then
-    --   wyptmgrServer.log("Clearing press... " .. currentlyPressed[1] .. ":" .. currentlyPressed[2])
-    --   GetDevice(currentlyPressed[1]):performClickableAction(currentlyPressed[2])
-    --   wyptmgrServer.log("Cleared press... " .. currentlyPressed[1] .. ":" .. currentlyPressed[2])
-    --   currentlyPressed = nil
-    --   wyptmgrServer.log("Reset Currently Pressed value")
-    -- end
     if sequenceStatus == "READY" then
       wyptmgrServer.log("Actioning input...")
       local delay = inputNextKeypress()
@@ -379,7 +375,8 @@ function LuaExportActivityNextEvent(tCurrent)
     end
     if sequenceStatus == "DONE" then
       wyptmgrServer.log("Completed input.")
-      _tNextWyptMgr = tCurrent
+      -- reset state
+      resetState()
     end
   end
 
@@ -396,10 +393,6 @@ function LuaExportActivityNextEvent(tCurrent)
         wyptmgrServer.log('ERROR Calling other LuaExportActivityNextEvent from another script...')
     end
   end
-
-  -- if tNext == tCurrent then
-    wyptmgrServer.log("tNext: " .. tNext .. " tCurrent: " .. tCurrent)
-  -- end
 
   return tNext
 end
