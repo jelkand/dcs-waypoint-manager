@@ -1,5 +1,9 @@
 function waypointmgr_load()
   package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
+  package.path  = package.path..";.\\LuaSocket\\?.lua;"
+  package.cpath = package.cpath..";.\\LuaSocket\\?.dll;"
+
+  local socket = require("socket")
 
   local lfs = require("lfs")
   local U = require("me_utilities")
@@ -15,14 +19,27 @@ function waypointmgr_load()
   local windowSkinHidden = Skin.windowSkinChatMin()
   local panel = nil
   local textarea = nil
-
-  local UFC_DEVICE = 25
-  local AMPCD_DEVICE = 37
-
   
   local wyptmgr = {
     logFile = io.open(lfs.writedir() .. [[Logs\WaypointManager.log]], "w")
   }
+
+  wyptmgr.socketconfig = {
+    send = {
+      address = "localhost",
+      port = 8675,
+      timeout = 0,
+    },
+  }
+
+  net.log("[Waypoint Manager] Attempting socket connection...")
+  wyptmgr.send = socket.try(socket.udp()) 
+  local _, err = wyptmgr.send:setpeername(wyptmgr.socketconfig.send.address,wyptmgr.socketconfig.send.port)
+  if (err ~= nil) then
+    net.log("[Waypoint Manager] Socket Error: " .. err)
+  end
+  socket.try(wyptmgr.send:settimeout(wyptmgr.socketconfig.send.timeout))
+  net.log("[Waypoint Manager] Established socket connection...")
 
   local dirPath = lfs.writedir() .. [[WaypointManager\]]
   local currentWyptSetPath = nil
@@ -213,6 +230,8 @@ end
       local long = fromDDtoDDMMMM(coord.x, 'x')
       wyptmgr.log("Calculated " .. lat .. " " .. long)
     end
+
+    wyptmgr.send:send(JSON:encode(currentWyptData))
   end
 
 
