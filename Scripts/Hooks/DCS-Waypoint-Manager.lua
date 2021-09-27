@@ -196,26 +196,26 @@ end
 
 
   
-  -- https://stackoverflow.com/questions/18313171/lua-rounding-numbers-and-then-truncate
-  local function round(exact, quantum)
-    local quant,frac = math.modf(exact/quantum)
-    return quantum * (quant + (frac > 0.5 and 1 or 0))
-  end
+  -- -- https://stackoverflow.com/questions/18313171/lua-rounding-numbers-and-then-truncate
+  -- local function round(exact, quantum)
+  --   local quant,frac = math.modf(exact/quantum)
+  --   return quantum * (quant + (frac > 0.5 and 1 or 0))
+  -- end
 
-  local function fromDDtoDDMMMM(decimalDegrees, axis)
-    local direction
-    local positiveDegrees = decimalDegrees > 0
-    if axis == 'x' then
-        direction =  positiveDegrees and 'E' or 'W'
-    else
-        direction =  positiveDegrees and 'N' or 'S'
-    end
+  -- local function fromDDtoDDMMMM(decimalDegrees, axis)
+  --   local direction
+  --   local positiveDegrees = decimalDegrees > 0
+  --   if axis == 'x' then
+  --       direction =  positiveDegrees and 'E' or 'W'
+  --   else
+  --       direction =  positiveDegrees and 'N' or 'S'
+  --   end
 
-	local unsignedDegrees = math.abs(decimalDegrees)
-    local degrees = tonumber(string.format("%u", unsignedDegrees))
-    local minutes = round((unsignedDegrees - degrees) * 60, 0.01)
-    return direction .. string.format("%u", degrees) .. string.format("%u", minutes* 100)
-  end
+	--   local unsignedDegrees = math.abs(decimalDegrees)
+  --   local degrees = tonumber(string.format("%u", unsignedDegrees))
+  --   local minutes = round((unsignedDegrees - degrees) * 60, 0.01)
+  --   return direction .. string.format("%u", degrees) .. string.format("%u", minutes* 100)
+  -- end
 
 
   local function inputWaypoints()
@@ -223,13 +223,13 @@ end
 
     local currentWyptData = loadJSONtoLua(currentWyptSetPath)
 
-    for idx, coord in ipairs(currentWyptData) do
-      wyptmgr.log('At index ' .. idx .. 'found x: ' .. coord.x .. ' and y: ' .. coord.y)
+    -- for idx, coord in ipairs(currentWyptData) do
+    --   wyptmgr.log('At index ' .. idx .. 'found x: ' .. coord.x .. ' and y: ' .. coord.y)
 
-      local lat = fromDDtoDDMMMM(coord.y, 'y')
-      local long = fromDDtoDDMMMM(coord.x, 'x')
-      wyptmgr.log("Calculated " .. lat .. " " .. long)
-    end
+    --   local lat = fromDDtoDDMMMM(coord.y, 'y')
+    --   local long = fromDDtoDDMMMM(coord.x, 'x')
+    --   wyptmgr.log("Calculated " .. lat .. " " .. long)
+    -- end
 
     wyptmgr.send:send(JSON:encode(currentWyptData))
   end
