@@ -1,5 +1,9 @@
 function waypointmgr_load()
   package.path = package.path .. ";.\\Scripts\\?.lua;.\\Scripts\\UI\\?.lua;"
+  package.path  = package.path..";.\\LuaSocket\\?.lua;"
+  package.cpath = package.cpath..";.\\LuaSocket\\?.dll;"
+
+  local socket = require("socket")
 
   local lfs = require("lfs")
   local U = require("me_utilities")
@@ -15,25 +19,34 @@ function waypointmgr_load()
   local windowSkinHidden = Skin.windowSkinChatMin()
   local panel = nil
   local textarea = nil
-
-  local UFC_DEVICE = 25
-  local AMPCD_DEVICE = 37
-
   
   local wyptmgr = {
     logFile = io.open(lfs.writedir() .. [[Logs\WaypointManager.log]], "w")
   }
+
+  wyptmgr.socketconfig = {
+    send = {
+      address = "localhost",
+      port = 8675,
+      timeout = 0,
+    },
+  }
+
+  net.log("[Waypoint Manager] Attempting socket connection...")
+  wyptmgr.send = socket.try(socket.udp()) 
+  local _, err = wyptmgr.send:setpeername(wyptmgr.socketconfig.send.address,wyptmgr.socketconfig.send.port)
+  if (err ~= nil) then
+    net.log("[Waypoint Manager] Socket Error: " .. err)
+  end
+  socket.try(wyptmgr.send:settimeout(wyptmgr.socketconfig.send.timeout))
+  net.log("[Waypoint Manager] Established socket connection...")
 
   local dirPath = lfs.writedir() .. [[WaypointManager\]]
   local currentWyptSetPath = nil
   local wyptSetCount = 0
   local wyptSets = {}
 
-  local JSON = loadfile("Scripts\\JSON.lua")()
-  wyptmgr.JSON = JSON:new()
-  function wyptmgr.JSON:onDecodeError(message, text, location, etc)
-     wyptmgr.log('Failed to decode JSON' .. message .. text)
-  end
+  local JSON = assert(loadfile "Scripts\\JSON.lua")()
 
   local function loadSet(wyptSet)
     wyptmgr.log("loading file " .. wyptSet.path)
@@ -61,10 +74,8 @@ function waypointmgr_load()
   else
       local content = file:read("*all")
       file:close()
-
-      local decoded = wyptmgr.JSON:decode(content)
-      self.log('decoded: ' .. decoded .. err)
-      return content
+      local decoded = JSON:decode(content)
+      return decoded
   end
   end
 
@@ -182,25 +193,47 @@ end
     keyboardLocked = true
   end
 
+
+
+  
+  -- -- https://stackoverflow.com/questions/18313171/lua-rounding-numbers-and-then-truncate
+  -- local function round(exact, quantum)
+  --   local quant,frac = math.modf(exact/quantum)
+  --   return quantum * (quant + (frac > 0.5 and 1 or 0))
+  -- end
+
+  -- local function fromDDtoDDMMMM(decimalDegrees, axis)
+  --   local direction
+  --   local positiveDegrees = decimalDegrees > 0
+  --   if axis == 'x' then
+  --       direction =  positiveDegrees and 'E' or 'W'
+  --   else
+  --       direction =  positiveDegrees and 'N' or 'S'
+  --   end
+
+	--   local unsignedDegrees = math.abs(decimalDegrees)
+  --   local degrees = tonumber(string.format("%u", unsignedDegrees))
+  --   local minutes = round((unsignedDegrees - degrees) * 60, 0.01)
+  --   return direction .. string.format("%u", degrees) .. string.format("%u", minutes* 100)
+  -- end
+
+
   local function inputWaypoints()
     wyptmgr.log('Input waypoints clicked...' .. currentWyptSetPath)
 
     local currentWyptData = loadJSONtoLua(currentWyptSetPath)
 
-    wyptmgr.log('Current Wypt Data: ' .. currentWyptData)
+    -- for idx, coord in ipairs(currentWyptData) do
+    --   wyptmgr.log('At index ' .. idx .. 'found x: ' .. coord.x .. ' and y: ' .. coord.y)
 
-    local decodedCoords = JSON:decode(currentWyptData)
-    wyptmgr.log('JSON: ' .. decodedCoords)
+    --   local lat = fromDDtoDDMMMM(coord.y, 'y')
+    --   local long = fromDDtoDDMMMM(coord.x, 'x')
+    --   wyptmgr.log("Calculated " .. lat .. " " .. long)
+    -- end
 
-    for idx, coord in decodedCoords do
-      wyptmgr.log('At index ' .. idx .. 'found x: ' .. coord.x .. ' and y: ' .. coord.y)
-    end
-
-    GetDevice(UFC_DEVICE):performClickableAction(111, 1)
+    wyptmgr.send:send(JSON:encode(currentWyptData))
   end
 
-  local function decimalDegreesToDegreesDecimalMinutes(decimalDegrees)
-  end
 
   function wyptmgr.createWindow()
     wyptmgr.log('Creating window...')
@@ -373,9 +406,10 @@ end
 
   DCS.setUserCallbacks(wyptmgr)
 
-  net.log("[Waypoint Manager] Loaded ...")
+  net.log("[Waypoint Manager] Loaded...")
 end
 
+net.log("[Waypoint Manager] Loading...")
 local status, err = pcall(waypointmgr_load)
 if not status then
   net.log("[Waypoint Manager] Load Error: " .. tostring(err))
