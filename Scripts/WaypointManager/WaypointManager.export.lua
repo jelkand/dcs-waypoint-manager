@@ -223,7 +223,7 @@ local function fromDDtoDDMMMM(decimalDegrees, axis)
   -- wyptmgrServer.log("Got degrees " .. degrees)
   local minutes = round((unsignedDegrees - degrees) * 60, 0.01)
   -- wyptmgrServer.log("Got minutes " .. minutes)
-  return direction .. string.format("%u", degrees) .. string.format("%u", minutes * 100)
+  return direction .. string.format("%u", degrees) .. string.format("%04u", minutes * 100)
 end
 
 local function fromStringToSequence(str)
@@ -255,6 +255,8 @@ local function buildWyptInputSeq(decodedWaypoints)
     local long = fromDDtoDDMMMM(coord.x, "x")
     local longSeq = fromStringToSequence(long)
     longSeq = concatTbls(longSeq, enterSeq)
+
+    wyptmgrServer.log("Computed " .. lat .. " " .. long .. " at index ".. idx)
     if idx ~= waypointCount then
       longSeq = concatTbls(longSeq, nextWyptSeq)
     end
